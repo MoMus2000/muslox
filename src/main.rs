@@ -16,7 +16,7 @@ pub fn run_file(path: &str) -> Result<(), LoxErr> {
 }
 
 pub fn run(contents: &str) -> Result<(), LoxErr> {
-    let scanner = Scanner::new(contents);
+    let mut scanner = Scanner::new(contents);
     let tokens = scanner.scan_tokens()?;
     for token in tokens {
         println!("{:?}", token);
@@ -36,14 +36,13 @@ pub fn run_prompt() -> Result<(), LoxErr> {
         if n <= 1 {
             return Ok(());
         }
+        buffer = buffer.trim_end().to_string();
         println!("ECHO: {}", buffer);
         run(&buffer)?;
     }
 }
 fn main() -> Result<(), LoxErr> {
     let args: Vec<String> = env::args().collect();
-
-    println!("Args {:?}", args);
 
     if args.len() > 2 {
         println!("Usage: jlox [script]");
