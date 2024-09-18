@@ -97,12 +97,73 @@ impl Scanner {
                     self.add_token(TokenType::SLASH)
                 }
             }
+            '"' => self.string()?,
             '\n' => self.line += 1,
             ' ' => {}
             '\r' => {}
             '\t' => {}
-            _ => println!("Unidentified Token, exiting ... {}", c),
+            c => {
+                if self.is_digit(c) {
+                    self.number();
+                }
+            }
         }
+        Ok(())
+    }
+
+    fn number(&mut self) -> Result<(), LoxErr> {
+        while self.is_digit(self.peek()) {
+            self.advance();
+        }
+
+        if self.peek() == '.' && self.is_digit(self.peek_next()) {
+            self.advance();
+        }
+
+        while self.is_digit(self.peek()) {
+            self.advance();
+        }
+
+        let num_lit = &self.source[self.start..self.current];
+        let num_lit: f64 = num_lit.parse()?;
+        let num_lit = LiteralValue::FValue(num_lit);
+        self.add_token_literal(TokenType::NUMBER, Some(num_lit));
+
+        Ok(())
+    }
+
+    fn peek_next(&self) -> char {
+        if self.current + 1 >= self.source.len() {
+            return '\n';
+        }
+        self.source.as_bytes()[self.current + 1] as char
+    }
+
+    fn is_digit(&self, n: char) -> bool {
+        return n >= '0' && n <= '9';
+    }
+
+    fn string(&mut self) -> Result<(), LoxErr> {
+        while self.peek() != '"' && !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        if self.is_at_end() {
+            return Err("Reached EOF".into());
+        }
+
+        // Closing the '"'
+        self.advance();
+
+        let val = &self.source[self.start + 1..self.current];
+
+        let string_lit = LiteralValue::StringValue(val.to_string());
+
+        self.add_token_literal(TokenType::STRINGLIT, Some(string_lit));
+
         Ok(())
     }
 
@@ -210,7 +271,7 @@ pub enum TokenType {
 
     // Literals
     IDENTIFIER,
-    STRING,
+    STRINGLIT,
     NUMBER,
 
     // Keywords
