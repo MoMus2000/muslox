@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::LoxErr;
 
@@ -7,16 +7,37 @@ pub struct Scanner {
     tokens: Vec<Token>,
     start: usize,
     current: usize,
+    keywords: HashMap<String, TokenType>,
     line: usize,
 }
 
 impl Scanner {
     pub fn new(contents: &str) -> Self {
+        let mut keyword_map: HashMap<String, TokenType> = HashMap::new();
+
+        keyword_map.insert("and".to_string(), TokenType::AND);
+        keyword_map.insert("class".to_string(), TokenType::CLASS);
+        keyword_map.insert("else".to_string(), TokenType::ELSE);
+        keyword_map.insert("false".to_string(), TokenType::FALSE);
+        keyword_map.insert("fun".to_string(), TokenType::FUN);
+        keyword_map.insert("for".to_string(), TokenType::FOR);
+        keyword_map.insert("if".to_string(), TokenType::IF);
+        keyword_map.insert("nil".to_string(), TokenType::NIL);
+        keyword_map.insert("or".to_string(), TokenType::OR);
+        keyword_map.insert("print".to_string(), TokenType::PRINT);
+        keyword_map.insert("return".to_string(), TokenType::RETURN);
+        keyword_map.insert("super".to_string(), TokenType::SUPER);
+        keyword_map.insert("this".to_string(), TokenType::THIS);
+        keyword_map.insert("true".to_string(), TokenType::TRUE);
+        keyword_map.insert("var".to_string(), TokenType::VAR);
+        keyword_map.insert("while".to_string(), TokenType::WHILE);
+
         Self {
             source: contents.to_string(),
             tokens: vec![],
             start: 0,
             current: 0,
+            keywords: keyword_map,
             line: 1,
         }
     }
@@ -104,11 +125,35 @@ impl Scanner {
             '\t' => {}
             c => {
                 if self.is_digit(c) {
-                    self.number();
+                    self.number()?;
+                } else if self.is_alpha_numeric(c) {
+                    self.identifier()?;
                 }
             }
         }
         Ok(())
+    }
+
+    fn identifier(&mut self) -> Result<(), LoxErr> {
+        while self.is_alpha_numeric(self.peek()) {
+            self.advance();
+        }
+        let ident = &self.source[self.start..self.current];
+        let keyword = self.keywords.get(ident);
+        match keyword {
+            Some(k) => {
+                self.add_token(k.clone());
+            }
+            None => {
+                let ident_lit = LiteralValue::IdentifierValue(ident.to_string());
+                self.add_token_literal(TokenType::IDENTIFIER, Some(ident_lit));
+            }
+        }
+        Ok(())
+    }
+
+    fn is_alpha_numeric(&self, c: char) -> bool {
+        (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_')
     }
 
     fn number(&mut self) -> Result<(), LoxErr> {
@@ -210,7 +255,6 @@ impl Scanner {
 
 #[derive(Debug, Clone)]
 pub enum LiteralValue {
-    IntValue(i64),
     FValue(f64),
     StringValue(String),
     IdentifierValue(String),
