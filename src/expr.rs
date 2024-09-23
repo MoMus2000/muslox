@@ -65,6 +65,13 @@ impl Expr {
                     (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::STAR) => {
                         return Ok(LiteralValue::FValue(x * y));
                     }
+                    (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::EQUALEQUAL) => {
+                        let boolean_res = x == y;
+                        if boolean_res {
+                            return Ok(LiteralValue::True);
+                        }
+                        Ok(LiteralValue::False)
+                    }
                     _ => panic!("Should not get to this point"),
                 }
             }
