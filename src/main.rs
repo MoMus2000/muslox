@@ -22,9 +22,9 @@ pub fn run_file(path: &str) -> Result<(), LoxErr> {
 pub fn run(contents: &str) -> Result<(), LoxErr> {
     let mut scanner = Scanner::new(contents);
     let tokens = scanner.scan_tokens()?;
-    println!("{:?}", tokens);
     let mut parser = Parser::new(tokens);
-    println!("{}", parser.parse().to_string());
+    let eval = parser.parse().evaluate()?;
+    println!("> {}", eval.to_string());
     Ok(())
 }
 
@@ -40,7 +40,6 @@ pub fn run_prompt() -> Result<(), LoxErr> {
             return Ok(());
         }
         buffer = buffer.trim_end().to_string();
-        println!("ECHO: {}", buffer);
         run(&buffer)?;
     }
 }

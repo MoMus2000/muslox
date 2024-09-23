@@ -1,6 +1,4 @@
-use std::fmt::Binary;
-
-use crate::scanner::*;
+use crate::{scanner::*, LoxErr};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -32,6 +30,65 @@ impl Expr {
             Expr::Unary { operator, right } => {
                 return format!("({} {})", operator.lexeme, right.to_string())
             }
+        }
+    }
+
+    pub fn evaluate(&mut self) -> Result<LiteralValue, LoxErr> {
+        match self {
+            Expr::LiteralExpr { literal } => Ok(literal.clone()),
+            Expr::Grouping { expression } => expression.evaluate(),
+            Expr::Unary { operator, right } => {
+                let right = right.evaluate()?;
+                match (right.clone(), operator.token_type.clone()) {
+                    (LiteralValue::FValue(x), TokenType::MINUS) => {
+                        return Ok(LiteralValue::FValue(-1.0 * x));
+                    }
+                    (_, TokenType::MINUS) => Err("Unable to negate this expression".into()),
+                    (any, TokenType::BANG) => Ok(self.is_falsy(any)),
+                    _ => panic!("Should not get to this point"),
+                }
+            }
+            Expr::Binary { left, op, right } => {
+                let left = left.evaluate()?;
+                let right = right.evaluate()?;
+
+                match (left, right, op.token_type.clone()) {
+                    (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::PLUS) => {
+                        return Ok(LiteralValue::FValue(x + y));
+                    }
+                    (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::MINUS) => {
+                        return Ok(LiteralValue::FValue(x - y));
+                    }
+                    (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::SLASH) => {
+                        return Ok(LiteralValue::FValue(x / y));
+                    }
+                    (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::STAR) => {
+                        return Ok(LiteralValue::FValue(x * y));
+                    }
+                    _ => panic!("Should not get to this point"),
+                }
+            }
+        }
+    }
+
+    fn is_falsy(&mut self, expr: LiteralValue) -> LiteralValue {
+        match expr {
+            LiteralValue::FValue(x) => {
+                if x < 0.0 {
+                    return LiteralValue::False;
+                }
+                LiteralValue::True
+            }
+            LiteralValue::StringValue(s) => {
+                if s.len() == 0 {
+                    return LiteralValue::True;
+                }
+                LiteralValue::False
+            }
+            LiteralValue::True => LiteralValue::False,
+            LiteralValue::False => LiteralValue::True,
+            LiteralValue::Nil => LiteralValue::True,
+            _ => panic!("Should not reach this point"),
         }
     }
 

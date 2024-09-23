@@ -223,9 +223,12 @@ impl Scanner {
         if self.is_at_end() {
             return false;
         }
-        let c = self.source.as_bytes()[self.current];
-        self.current += 1;
-        c as char == symbol
+        if self.source.chars().nth(self.current).unwrap() != symbol {
+            return false;
+        } else {
+            self.current += 1;
+            return true;
+        }
     }
 
     fn advance(&mut self) -> char {
@@ -239,10 +242,7 @@ impl Scanner {
     }
 
     fn add_token_literal(&mut self, token_type: TokenType, literal: Option<LiteralValue>) {
-        let lexeme: String = self.source.as_bytes()[self.start..self.current]
-            .iter()
-            .map(|x| *x as char)
-            .collect();
+        let lexeme: String = self.source[self.start..self.current].to_string();
 
         self.tokens.push(Token {
             token_type,

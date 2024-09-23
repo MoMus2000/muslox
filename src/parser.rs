@@ -1,9 +1,7 @@
 use core::panic;
-use std::fmt::Binary;
 
 use crate::expr::*;
 use crate::LiteralValue;
-use crate::LoxErr;
 use crate::Token;
 use crate::TokenType;
 
