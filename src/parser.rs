@@ -17,12 +17,15 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
+    pub fn parse(&mut self) -> Expr {
+        self.expression()
+    }
+
     fn expression(&mut self) -> Expr {
         self.equality()
     }
 
     fn equality(&mut self) -> Expr {
-        println!("Inside equality");
         let mut expr = self.comparision();
         let variac = vec![TokenType::BANGEQUAL, TokenType::EQUALEQUAL];
         while self.match_token(&variac) {
@@ -73,7 +76,6 @@ impl Parser {
     }
 
     fn comparision(&mut self) -> Expr {
-        println!("Inside comparision");
         let mut expr = self.term();
         let variac = vec![
             TokenType::GREATER,
@@ -95,7 +97,6 @@ impl Parser {
 
     fn term(&mut self) -> Expr {
         let mut expr = self.factor();
-        println!("Inside term");
         let variac = vec![TokenType::MINUS, TokenType::PLUS];
         while self.match_token(&variac) {
             let operator = self.previous();
@@ -106,7 +107,6 @@ impl Parser {
                 right: Box::new(right),
             }
         }
-        println!("Expression inside term {:?}", expr);
         expr
     }
 
@@ -114,10 +114,10 @@ impl Parser {
         if self.match_token(&vec![TokenType::BANG, TokenType::MINUS]) {
             let op = self.previous();
             let rhs = self.unary();
-            Expr::Unary {
+            return Expr::Unary {
                 operator: op,
                 right: Box::new(rhs),
-            }
+            };
         } else {
             self.primary()
         }
@@ -162,7 +162,7 @@ impl Parser {
         }
         if self.match_token(&vec![TokenType::LEFTPAREN]) {
             let expr = self.expression();
-            self.consume(TokenType::RIGHTPAREN, "Expect ')' after expression ')'");
+            self.consume(TokenType::RIGHTPAREN, "Expect ')' after expression '('");
             return Expr::Grouping {
                 expression: Box::new(expr),
             };
@@ -171,9 +171,9 @@ impl Parser {
     }
 
     fn consume(&mut self, ttype: TokenType, message: &str) {
-        let token = self.peek();
-        if token.token_type == ttype {
+        if self.check(&ttype) {
             self.advance();
+            return;
         }
         panic!("{}", message)
     }
@@ -183,6 +183,26 @@ impl Parser {
             Some(t) => t.clone(),
             None => panic!("Undefined token"),
         }
+    }
+    fn synchronize(&mut self) {
+        self.advance();
+        while !self.is_at_end() {
+            if self.previous().token_type == TokenType::EOF {
+                return;
+            }
+        }
+        match self.peek().token_type {
+            TokenType::CLASS
+            | TokenType::FUN
+            | TokenType::VAR
+            | TokenType::FOR
+            | TokenType::IF
+            | TokenType::WHILE
+            | TokenType::PRINT
+            | TokenType::RETURN => return,
+            _ => (),
+        }
+        self.advance();
     }
 }
 
@@ -226,7 +246,7 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let parsed_expression = parser.expression();
         let parsed_expression = parsed_expression.to_string();
-        assert_eq!("(+ (1 5))", parsed_expression);
+        assert_eq!("(+ 1 5)", parsed_expression);
     }
 
     #[test]
@@ -236,6 +256,15 @@ mod tests {
         let tokens = scanner.scan_tokens().unwrap();
         let mut parser = Parser::new(tokens);
         let parsed_expression = parser.expression().to_string();
-        assert_eq!("(== (+ (1 2)) (+ (5 7)))", parsed_expression);
+        assert_eq!("(== (+ 1 2) (+ 5 7))", parsed_expression);
+    }
+    #[test]
+    fn test_cmp_paren() {
+        let source = "1 + 2 == (5 + 7)";
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens().unwrap();
+        let mut parser = Parser::new(tokens);
+        let parsed_expression = parser.expression().to_string();
+        assert_eq!("(== (+ 1 2) (group (+ 5 7)))", parsed_expression);
     }
 }

@@ -25,12 +25,7 @@ impl Expr {
     pub fn to_string(&self) -> String {
         match self {
             Expr::Binary { left, op, right } => {
-                return format!(
-                    "({} ({} {}))",
-                    op.lexeme,
-                    left.to_string(),
-                    right.to_string()
-                )
+                return format!("({} {} {})", op.lexeme, left.to_string(), right.to_string())
             }
             Expr::Grouping { expression } => return format!("(group {})", expression.to_string()),
             Expr::LiteralExpr { literal } => return format!("{}", literal.to_string()),
