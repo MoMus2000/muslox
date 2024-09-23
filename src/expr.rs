@@ -62,8 +62,6 @@ mod tests {
                 literal: LiteralValue::FValue(2.0),
             }),
         };
-        minus_expr.print();
-
         let operation = Expr::Binary {
             left: Box::new(minus_expr.clone()),
             op: super::Token {
@@ -74,7 +72,5 @@ mod tests {
             },
             right: Box::new(minus_expr),
         };
-
-        operation.print();
     }
 }

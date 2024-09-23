@@ -1,4 +1,5 @@
 mod expr;
+mod parser;
 mod scanner;
 use crate::scanner::*;
 
@@ -7,6 +8,8 @@ use std::fs;
 use std::io::Write;
 use std::process::exit;
 use std::{env, io, io::BufRead};
+
+// At part 9
 
 type LoxErr = Box<dyn Error>;
 
@@ -22,7 +25,6 @@ pub fn run(contents: &str) -> Result<(), LoxErr> {
     for token in tokens {
         println!("{:?}", token);
     }
-
     Ok(())
 }
 
