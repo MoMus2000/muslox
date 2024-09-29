@@ -1,6 +1,10 @@
 use core::panic;
+use std::os::macos::raw::stat;
+use std::process::id;
 
 use crate::expr::*;
+use crate::statement;
+use crate::statement::Statement;
 use crate::LiteralValue;
 use crate::Token;
 use crate::TokenType;
@@ -15,8 +19,57 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Expr {
-        self.expression()
+    pub fn parse(&mut self) -> Vec<Statement> {
+        let mut statements: Vec<Statement> = Vec::new();
+        while !self.is_at_end() {
+            let statement = self.statement();
+            statements.push(statement)
+        }
+        statements
+    }
+
+    fn statement(&mut self) -> Statement {
+        let variac = vec![TokenType::PRINT];
+        if self.match_token(&variac) {
+            return self.print_statement();
+        }
+        let variac = vec![TokenType::VAR];
+        if self.match_token(&variac) {
+            println!("Assignment");
+            return self.assignment_statement();
+        }
+        self.expression_statement()
+    }
+
+    fn print_statement(&mut self) -> Statement {
+        let expr = self.expression();
+        self.consume(TokenType::SEMICOLON, "Expected ; after statement");
+        Statement::Print { expression: expr }
+    }
+
+    fn assignment_statement(&mut self) -> Statement {
+        let token = self.consume(TokenType::IDENTIFIER, "Expected Variable Name");
+
+        if self.match_token(&vec![TokenType::EQUAL]) {
+            let initializer = self.expression();
+            self.consume(
+                TokenType::SEMICOLON,
+                "Expected ';' after variable declaration",
+            );
+
+            return Statement::Var {
+                indentifier: token.lexeme,
+                expression: initializer,
+            };
+        }
+        panic!("Cannot reach here for now")
+    }
+
+    fn expression_statement(&mut self) -> Statement {
+        let expr = self.expression();
+        println!("EXPR: {:?}", expr);
+        self.consume(TokenType::SEMICOLON, "Expected ; after statement");
+        Statement::Expression { expression: expr }
     }
 
     fn expression(&mut self) -> Expr {
@@ -165,13 +218,19 @@ impl Parser {
                 expression: Box::new(expr),
             };
         }
+        if self.match_token(&vec![TokenType::IDENTIFIER]) {
+            let identifier = self.tokens[self.current - 1].clone();
+            return Expr::Assignment {
+                identifier: identifier.lexeme,
+            };
+        }
         panic!("Should never reach this point")
     }
 
-    fn consume(&mut self, ttype: TokenType, message: &str) {
+    fn consume(&mut self, ttype: TokenType, message: &str) -> Token {
         if self.check(&ttype) {
             self.advance();
-            return;
+            return self.previous();
         }
         panic!("{}", message)
     }

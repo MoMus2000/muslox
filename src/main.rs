@@ -1,6 +1,9 @@
 mod expr;
+mod interpreter;
 mod parser;
 mod scanner;
+mod statement;
+use interpreter::Interpreter;
 use parser::Parser;
 
 use crate::scanner::*;
@@ -14,26 +17,24 @@ use std::{env, io, io::BufRead};
 type LoxErr = Box<dyn Error>;
 
 pub fn run_file(path: &str) -> Result<(), LoxErr> {
+    let mut interpreter = Interpreter::new();
     let contents = fs::read_to_string(path)?;
-    run(&contents)?;
+    run(&mut interpreter, &contents)?;
     Ok(())
 }
 
-pub fn run(contents: &str) -> Result<(), LoxErr> {
+pub fn run(interpreter: &mut Interpreter, contents: &str) -> Result<(), LoxErr> {
     let mut scanner = Scanner::new(contents);
     let tokens = scanner.scan_tokens()?;
+    println!("TOKENS: {:?}", tokens);
     let mut parser = Parser::new(tokens);
-    let eval = parser.parse().evaluate()?;
-    match eval {
-        LiteralValue::StringValue(x) => {
-            println!("> \"{}\"", x);
-        }
-        _ => println!("> {}", eval.to_string()),
-    }
+    let statements = parser.parse();
+    interpreter.interpret(statements)?;
     Ok(())
 }
 
 pub fn run_prompt() -> Result<(), LoxErr> {
+    let mut interpreter = Interpreter::new();
     loop {
         print!("> ");
         let mut buffer = String::new();
@@ -45,7 +46,7 @@ pub fn run_prompt() -> Result<(), LoxErr> {
             return Ok(());
         }
         buffer = buffer.trim_end().to_string();
-        run(&buffer)?;
+        run(&mut interpreter, &buffer)?;
     }
 }
 fn main() -> Result<(), LoxErr> {

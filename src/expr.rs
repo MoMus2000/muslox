@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{scanner::*, LoxErr};
 
 #[derive(Debug, Clone)]
@@ -17,6 +19,9 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>,
     },
+    Assignment {
+        identifier: String,
+    },
 }
 
 impl Expr {
@@ -30,15 +35,25 @@ impl Expr {
             Expr::Unary { operator, right } => {
                 return format!("({} {})", operator.lexeme, right.to_string())
             }
+            Expr::Assignment { identifier } => {
+                return format!("var {} ", identifier);
+            }
         }
     }
 
-    pub fn evaluate(&mut self) -> Result<LiteralValue, LoxErr> {
+    pub fn evaluate(
+        &mut self,
+        local_storage: &HashMap<String, LiteralValue>,
+    ) -> Result<LiteralValue, LoxErr> {
         match self {
+            Expr::Assignment { identifier } => match local_storage.get(identifier) {
+                Some(ident) => Ok(ident.clone()),
+                None => panic!("Undefined Var"),
+            },
             Expr::LiteralExpr { literal } => Ok(literal.clone()),
-            Expr::Grouping { expression } => expression.evaluate(),
+            Expr::Grouping { expression } => expression.evaluate(local_storage),
             Expr::Unary { operator, right } => {
-                let right = right.evaluate()?;
+                let right = right.evaluate(local_storage)?;
                 match (right.clone(), operator.token_type.clone()) {
                     (LiteralValue::FValue(x), TokenType::MINUS) => {
                         return Ok(LiteralValue::FValue(-1.0 * x));
@@ -49,8 +64,8 @@ impl Expr {
                 }
             }
             Expr::Binary { left, op, right } => {
-                let left = left.evaluate()?;
-                let right = right.evaluate()?;
+                let left = left.evaluate(&local_storage)?;
+                let right = right.evaluate(&local_storage)?;
 
                 match (left, right, op.token_type.clone()) {
                     (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::PLUS) => {
@@ -65,12 +80,122 @@ impl Expr {
                     (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::STAR) => {
                         return Ok(LiteralValue::FValue(x * y));
                     }
+                    (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::GREATER) => {
+                        let bool = x > y;
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
+                    }
+                    (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::GREATEREQUAL) => {
+                        let bool = x >= y;
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
+                    }
+                    (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::LESS) => {
+                        let bool = x < y;
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
+                    }
+                    (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::LESSEQUAL) => {
+                        let bool = x <= y;
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
+                    }
                     (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::EQUALEQUAL) => {
                         let boolean_res = x == y;
                         if boolean_res {
                             return Ok(LiteralValue::True);
                         }
                         Ok(LiteralValue::False)
+                    }
+                    (
+                        LiteralValue::StringValue(x),
+                        LiteralValue::StringValue(y),
+                        TokenType::EQUALEQUAL,
+                    ) => {
+                        let boolean_res = x == y;
+                        if boolean_res {
+                            return Ok(LiteralValue::True);
+                        }
+                        Ok(LiteralValue::False)
+                    }
+                    (
+                        LiteralValue::StringValue(x),
+                        LiteralValue::StringValue(y),
+                        TokenType::BANGEQUAL,
+                    ) => {
+                        let boolean_res = x != y;
+                        if boolean_res {
+                            return Ok(LiteralValue::True);
+                        }
+                        Ok(LiteralValue::False)
+                    }
+                    (LiteralValue::StringValue(x), LiteralValue::FValue(y), TokenType::STAR) => {
+                        let mut concat = String::new();
+
+                        for i in 0..y as usize {
+                            concat.push_str(&x);
+                        }
+
+                        Ok(LiteralValue::StringValue(concat))
+                    }
+                    (
+                        LiteralValue::StringValue(x),
+                        LiteralValue::StringValue(y),
+                        TokenType::LESS,
+                    ) => {
+                        let bool = x < y;
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
+                    }
+                    (
+                        LiteralValue::StringValue(x),
+                        LiteralValue::StringValue(y),
+                        TokenType::GREATER,
+                    ) => {
+                        let bool = x > y;
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
+                    }
+                    (
+                        LiteralValue::StringValue(x),
+                        LiteralValue::StringValue(y),
+                        TokenType::GREATEREQUAL,
+                    ) => {
+                        let bool = x >= y;
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
+                    }
+                    (
+                        LiteralValue::StringValue(x),
+                        LiteralValue::StringValue(y),
+                        TokenType::LESSEQUAL,
+                    ) => {
+                        let bool = x <= y;
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
+                    }
+                    (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::BANGEQUAL) => {
+                        let bool = x != y;
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
                     }
                     (
                         LiteralValue::StringValue(x),
