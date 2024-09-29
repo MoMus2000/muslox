@@ -203,9 +203,13 @@ impl Scanner {
         // Closing the '"'
         self.advance();
 
-        let val = &self.source[self.start + 1..self.current];
+        let val = &self.source[self.start + 1..self.current - 1];
 
-        let string_lit = LiteralValue::StringValue(val.to_string());
+        let mut quoted_str = String::new();
+
+        quoted_str.push_str(val);
+
+        let string_lit = LiteralValue::StringValue(quoted_str);
 
         self.add_token_literal(TokenType::STRINGLIT, Some(string_lit));
 

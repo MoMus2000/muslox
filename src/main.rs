@@ -24,7 +24,12 @@ pub fn run(contents: &str) -> Result<(), LoxErr> {
     let tokens = scanner.scan_tokens()?;
     let mut parser = Parser::new(tokens);
     let eval = parser.parse().evaluate()?;
-    println!("> {}", eval.to_string());
+    match eval {
+        LiteralValue::StringValue(x) => {
+            println!("> \"{}\"", x);
+        }
+        _ => println!("> {}", eval.to_string()),
+    }
     Ok(())
 }
 

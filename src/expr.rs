@@ -72,6 +72,18 @@ impl Expr {
                         }
                         Ok(LiteralValue::False)
                     }
+                    (
+                        LiteralValue::StringValue(x),
+                        LiteralValue::StringValue(y),
+                        TokenType::PLUS,
+                    ) => {
+                        let mut concat = String::new();
+
+                        concat.push_str(x.as_str());
+                        concat.push_str(y.as_str());
+
+                        Ok(LiteralValue::StringValue(concat))
+                    }
                     _ => panic!("Should not get to this point"),
                 }
             }
