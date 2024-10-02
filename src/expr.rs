@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
-use crate::{environment::Environment, scanner::*, LoxErr};
+use crate::{
+    environment::{self, Environment},
+    scanner::*,
+    LoxErr,
+};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -51,10 +55,12 @@ impl Expr {
     pub fn evaluate(&mut self, local_storage: &mut Environment) -> Result<LiteralValue, LoxErr> {
         match self {
             Expr::Assignment { name, value } => {
-                local_storage.get(name.clone())?;
                 let value = value.evaluate(local_storage)?;
-                local_storage.define(name.to_string(), value.clone());
-                Ok(value)
+                let assign_success = local_storage.assign(name, value.clone());
+                match assign_success {
+                    true => return Ok(value),
+                    false => return Err(format!("Variable {} has not been declared", name).into()),
+                }
             }
             Expr::Var { identifier } => match local_storage.get(identifier.to_string()) {
                 Ok(ident) => Ok(ident.clone()),
