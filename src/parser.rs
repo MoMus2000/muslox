@@ -41,11 +41,46 @@ impl Parser {
         if self.match_token(&variac) {
             return Ok(self.assignment_statement()?);
         }
+        let variac = vec![TokenType::LEFTBRACE];
+        if self.match_token(&variac) {
+            return Ok(self.block_statement()?);
+        }
         let variac = vec![TokenType::ASSERT];
         if self.match_token(&variac) {
             return Ok(self.assert_statement()?);
         }
+        let variac = vec![TokenType::IF];
+        if self.match_token(&variac) {
+            return Ok(self.if_statement()?);
+        }
         Ok(self.expression_statement()?)
+    }
+
+    fn if_statement(&mut self) -> Result<Statement, LoxErr> {
+        self.consume(TokenType::LEFTPAREN, "Expected '(' after if")?;
+        let expr = self.expression()?;
+        self.consume(TokenType::RIGHTPAREN, "Expected ')' after if")?;
+        self.consume(TokenType::LEFTBRACE, "Expected {")?;
+        let mut statements = vec![];
+        while !self.check(&TokenType::RIGHTBRACE) && !self.is_at_end() {
+            let decl = self.declaration()?;
+            statements.push(decl);
+        }
+        self.consume(TokenType::RIGHTBRACE, "Expected }")?;
+        Ok(Statement::If {
+            conditional: expr,
+            happy_path: statements,
+        })
+    }
+
+    fn block_statement(&mut self) -> Result<Statement, LoxErr> {
+        let mut statements = vec![];
+        while !self.check(&TokenType::RIGHTBRACE) && !self.is_at_end() {
+            let decl = self.declaration()?;
+            statements.push(decl);
+        }
+        self.consume(TokenType::RIGHTBRACE, "Expected } after {")?;
+        Ok(Statement::Block { statements })
     }
 
     fn print_statement(&mut self) -> Result<Statement, LoxErr> {
@@ -61,6 +96,20 @@ impl Parser {
             "Expected ';' after variable declaration",
         )?;
         Ok(Statement::Assert { expression_a: val1 })
+    }
+
+    fn declaration(&mut self) -> Result<Statement, LoxErr> {
+        if self.match_token(&vec![TokenType::VAR]) {
+            match self.assignment_statement() {
+                Ok(stmt) => Ok(stmt),
+                Err(msg) => {
+                    // self.synchronize();
+                    Err(msg)
+                }
+            }
+        } else {
+            self.statement()
+        }
     }
 
     fn assignment_statement(&mut self) -> Result<Statement, LoxErr> {

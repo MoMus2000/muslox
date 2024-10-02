@@ -14,6 +14,30 @@ impl Interpreter {
     pub fn interpret(&mut self, statements: Vec<Statement>) -> Result<(), LoxErr> {
         for stmt in statements {
             match stmt {
+                Statement::If {
+                    mut conditional,
+                    happy_path,
+                } => {
+                    let res = conditional.evaluate(&mut self.env)?;
+                    match res {
+                        LiteralValue::True => {
+                            self.interpret(happy_path)?;
+                        }
+                        LiteralValue::False => {
+                            println!("Conditional is false")
+                        }
+                        _ => return Err("Error should not ever get to this point".into()),
+                    }
+                }
+                Statement::Block { statements } => {
+                    let mut new_env = Environment::new();
+                    new_env.enclosing = Some(Box::new(self.env.clone()));
+                    let old_env = self.env.clone();
+                    self.env = new_env;
+                    let block_result = self.interpret(statements);
+                    self.env = old_env;
+                    block_result?
+                }
                 Statement::Var {
                     indentifier,
                     mut expression,

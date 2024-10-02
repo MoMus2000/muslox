@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use crate::{LiteralValue, LoxErr};
 
+#[derive(Debug, Clone)]
 pub struct Environment {
     values: HashMap<String, LiteralValue>,
-    enclosing: Option<Box<Environment>>,
+    pub enclosing: Option<Box<Environment>>,
 }
 
 impl Environment {
@@ -21,9 +22,10 @@ impl Environment {
 
     pub fn get(&self, key: String) -> Result<LiteralValue, LoxErr> {
         let fetched_val = self.values.get(&key);
-        match fetched_val {
-            Some(v) => Ok(v.clone()),
-            None => Err("Calling undefined variable".into()),
+        match (fetched_val, &self.enclosing) {
+            (Some(v), _) => Ok(v.clone()),
+            (None, Some(v)) => Ok(v.get(key)?),
+            (None, None) => Err("No value found".into()),
         }
     }
 

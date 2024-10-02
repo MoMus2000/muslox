@@ -15,6 +15,13 @@ pub enum Statement {
     Assert {
         expression_a: Expr,
     },
+    Block {
+        statements: Vec<Statement>,
+    },
+    If {
+        conditional: Expr,
+        happy_path: Vec<Statement>,
+    },
 }
 
 impl Statement {}
