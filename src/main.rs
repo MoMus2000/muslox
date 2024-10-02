@@ -26,7 +26,6 @@ pub fn run_file(path: &str) -> Result<(), LoxErr> {
 pub fn run(interpreter: &mut Interpreter, contents: &str) -> Result<(), LoxErr> {
     let mut scanner = Scanner::new(contents);
     let tokens = scanner.scan_tokens()?;
-    println!("TOKENS: {:?}", tokens);
     let mut parser = Parser::new(tokens);
     let statements = parser.parse();
     interpreter.interpret(statements)?;

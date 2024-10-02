@@ -48,7 +48,10 @@ impl Expr {
         match self {
             Expr::Assignment { identifier } => match local_storage.get(identifier) {
                 Some(ident) => Ok(ident.clone()),
-                None => panic!("Undefined Var"),
+                None => {
+                    let error = format!("Undefined Var {}", identifier);
+                    Err(error.into())
+                }
             },
             Expr::LiteralExpr { literal } => Ok(literal.clone()),
             Expr::Grouping { expression } => expression.evaluate(local_storage),

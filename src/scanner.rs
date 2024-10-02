@@ -31,6 +31,7 @@ impl Scanner {
         keyword_map.insert("true".to_string(), TokenType::TRUE);
         keyword_map.insert("var".to_string(), TokenType::VAR);
         keyword_map.insert("while".to_string(), TokenType::WHILE);
+        keyword_map.insert("assert".to_string(), TokenType::ASSERT);
 
         Self {
             source: contents.to_string(),
@@ -355,6 +356,7 @@ pub enum TokenType {
     TRUE,
     VAR,
     WHILE,
+    ASSERT,
 
     EOF,
 }

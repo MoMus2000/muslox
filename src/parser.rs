@@ -1,13 +1,10 @@
-use core::panic;
-use std::os::macos::raw::stat;
-use std::process::id;
-
 use crate::expr::*;
-use crate::statement;
 use crate::statement::Statement;
 use crate::LiteralValue;
+use crate::LoxErr;
 use crate::Token;
 use crate::TokenType;
+use core::panic;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -21,74 +18,92 @@ impl Parser {
 
     pub fn parse(&mut self) -> Vec<Statement> {
         let mut statements: Vec<Statement> = Vec::new();
+        let mut errors: Vec<LoxErr> = Vec::new();
         while !self.is_at_end() {
             let statement = self.statement();
-            statements.push(statement)
+            match statement {
+                Ok(stmt) => statements.push(stmt),
+                Err(e) => {
+                    println!("{}", e);
+                    errors.push(e)
+                }
+            }
         }
         statements
     }
 
-    fn statement(&mut self) -> Statement {
+    fn statement(&mut self) -> Result<Statement, LoxErr> {
         let variac = vec![TokenType::PRINT];
         if self.match_token(&variac) {
-            return self.print_statement();
+            return Ok(self.print_statement()?);
         }
         let variac = vec![TokenType::VAR];
         if self.match_token(&variac) {
-            println!("Assignment");
-            return self.assignment_statement();
+            return Ok(self.assignment_statement()?);
         }
-        self.expression_statement()
+        let variac = vec![TokenType::ASSERT];
+        if self.match_token(&variac) {
+            return Ok(self.assert_statement()?);
+        }
+        Ok(self.expression_statement()?)
     }
 
-    fn print_statement(&mut self) -> Statement {
-        let expr = self.expression();
-        self.consume(TokenType::SEMICOLON, "Expected ; after statement");
-        Statement::Print { expression: expr }
+    fn print_statement(&mut self) -> Result<Statement, LoxErr> {
+        let expr = self.expression()?;
+        self.consume(TokenType::SEMICOLON, "Expected ; after statement")?;
+        Ok(Statement::Print { expression: expr })
     }
 
-    fn assignment_statement(&mut self) -> Statement {
-        let token = self.consume(TokenType::IDENTIFIER, "Expected Variable Name");
+    fn assert_statement(&mut self) -> Result<Statement, LoxErr> {
+        let val1 = self.expression()?;
+        self.consume(
+            TokenType::SEMICOLON,
+            "Expected ';' after variable declaration",
+        )?;
+        Ok(Statement::Assert { expression_a: val1 })
+    }
+
+    fn assignment_statement(&mut self) -> Result<Statement, LoxErr> {
+        let token = self.consume(TokenType::IDENTIFIER, "Expected Variable Name")?;
 
         if self.match_token(&vec![TokenType::EQUAL]) {
-            let initializer = self.expression();
+            let initializer = self.expression()?;
             self.consume(
                 TokenType::SEMICOLON,
                 "Expected ';' after variable declaration",
-            );
+            )?;
 
-            return Statement::Var {
+            return Ok(Statement::Var {
                 indentifier: token.lexeme,
                 expression: initializer,
-            };
+            });
         }
         panic!("Cannot reach here for now")
     }
 
-    fn expression_statement(&mut self) -> Statement {
-        let expr = self.expression();
-        println!("EXPR: {:?}", expr);
-        self.consume(TokenType::SEMICOLON, "Expected ; after statement");
-        Statement::Expression { expression: expr }
+    fn expression_statement(&mut self) -> Result<Statement, LoxErr> {
+        let expr = self.expression()?;
+        self.consume(TokenType::SEMICOLON, "Expected ; after statement")?;
+        Ok(Statement::Expression { expression: expr })
     }
 
-    fn expression(&mut self) -> Expr {
-        self.equality()
+    fn expression(&mut self) -> Result<Expr, LoxErr> {
+        Ok(self.equality()?)
     }
 
-    fn equality(&mut self) -> Expr {
-        let mut expr = self.comparision();
+    fn equality(&mut self) -> Result<Expr, LoxErr> {
+        let mut expr = self.comparision()?;
         let variac = vec![TokenType::BANGEQUAL, TokenType::EQUALEQUAL];
         while self.match_token(&variac) {
             let operator = self.previous();
-            let right = self.comparision();
+            let right = self.comparision()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 op: operator,
                 right: Box::new(right),
             }
         }
-        expr
+        Ok(expr)
     }
 
     fn match_token(&mut self, variatic: &Vec<TokenType>) -> bool {
@@ -126,8 +141,8 @@ impl Parser {
         return self.peek().token_type == *ttype;
     }
 
-    fn comparision(&mut self) -> Expr {
-        let mut expr = self.term();
+    fn comparision(&mut self) -> Result<Expr, LoxErr> {
+        let mut expr = self.term()?;
         let variac = vec![
             TokenType::GREATER,
             TokenType::GREATEREQUAL,
@@ -136,50 +151,50 @@ impl Parser {
         ];
         while self.match_token(&variac) {
             let operator = self.previous();
-            let right = self.term();
+            let right = self.term()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 op: operator,
                 right: Box::new(right),
             }
         }
-        expr
+        Ok(expr)
     }
 
-    fn term(&mut self) -> Expr {
-        let mut expr = self.factor();
+    fn term(&mut self) -> Result<Expr, LoxErr> {
+        let mut expr = self.factor()?;
         let variac = vec![TokenType::MINUS, TokenType::PLUS];
         while self.match_token(&variac) {
             let operator = self.previous();
-            let right = self.factor();
+            let right = self.factor()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 op: operator,
                 right: Box::new(right),
             }
         }
-        expr
+        Ok(expr)
     }
 
-    fn unary(&mut self) -> Expr {
+    fn unary(&mut self) -> Result<Expr, LoxErr> {
         if self.match_token(&vec![TokenType::BANG, TokenType::MINUS]) {
             let op = self.previous();
-            let rhs = self.unary();
-            return Expr::Unary {
+            let rhs = self.unary()?;
+            return Ok(Expr::Unary {
                 operator: op,
                 right: Box::new(rhs),
-            };
+            });
         } else {
             self.primary()
         }
     }
 
-    fn factor(&mut self) -> Expr {
-        let mut expr = self.unary();
+    fn factor(&mut self) -> Result<Expr, LoxErr> {
+        let mut expr = self.unary()?;
         let variac = vec![TokenType::SLASH, TokenType::STAR];
         while self.match_token(&variac) {
             let operator = self.previous();
-            let right = self.unary();
+            let right = self.unary()?;
 
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -187,52 +202,52 @@ impl Parser {
                 right: Box::new(right),
             }
         }
-        expr
+        Ok(expr)
     }
 
-    fn primary(&mut self) -> Expr {
+    fn primary(&mut self) -> Result<Expr, LoxErr> {
         if self.match_token(&vec![TokenType::FALSE]) {
-            return Expr::LiteralExpr {
+            return Ok(Expr::LiteralExpr {
                 literal: LiteralValue::False,
-            };
+            });
         }
         if self.match_token(&vec![TokenType::TRUE]) {
-            return Expr::LiteralExpr {
+            return Ok(Expr::LiteralExpr {
                 literal: LiteralValue::True,
-            };
+            });
         }
         if self.match_token(&vec![TokenType::NIL]) {
-            return Expr::LiteralExpr {
+            return Ok(Expr::LiteralExpr {
                 literal: LiteralValue::Nil,
-            };
+            });
         }
         if self.match_token(&vec![TokenType::NUMBER, TokenType::STRINGLIT]) {
-            return Expr::LiteralExpr {
+            return Ok(Expr::LiteralExpr {
                 literal: self.previous().literal.unwrap(),
-            };
+            });
         }
         if self.match_token(&vec![TokenType::LEFTPAREN]) {
-            let expr = self.expression();
-            self.consume(TokenType::RIGHTPAREN, "Expect ')' after expression '('");
-            return Expr::Grouping {
+            let expr = self.expression()?;
+            self.consume(TokenType::RIGHTPAREN, "Expect ')' after expression '('")?;
+            return Ok(Expr::Grouping {
                 expression: Box::new(expr),
-            };
+            });
         }
         if self.match_token(&vec![TokenType::IDENTIFIER]) {
             let identifier = self.tokens[self.current - 1].clone();
-            return Expr::Assignment {
+            return Ok(Expr::Assignment {
                 identifier: identifier.lexeme,
-            };
+            });
         }
         panic!("Should never reach this point")
     }
 
-    fn consume(&mut self, ttype: TokenType, message: &str) -> Token {
+    fn consume(&mut self, ttype: TokenType, message: &str) -> Result<Token, LoxErr> {
         if self.check(&ttype) {
             self.advance();
-            return self.previous();
+            return Ok(self.previous());
         }
-        panic!("{}", message)
+        Err(format!("{message}").into())
     }
 
     fn previous(&mut self) -> Token {
@@ -301,7 +316,7 @@ mod tests {
             },
         ];
         let mut parser = Parser::new(tokens);
-        let parsed_expression = parser.expression();
+        let parsed_expression = parser.expression().unwrap();
         let parsed_expression = parsed_expression.to_string();
         assert_eq!("(+ 1 5)", parsed_expression);
     }
@@ -312,7 +327,7 @@ mod tests {
         let mut scanner = Scanner::new(source);
         let tokens = scanner.scan_tokens().unwrap();
         let mut parser = Parser::new(tokens);
-        let parsed_expression = parser.expression().to_string();
+        let parsed_expression = parser.expression().unwrap().to_string();
         assert_eq!("(== (+ 1 2) (+ 5 7))", parsed_expression);
     }
     #[test]
@@ -321,7 +336,7 @@ mod tests {
         let mut scanner = Scanner::new(source);
         let tokens = scanner.scan_tokens().unwrap();
         let mut parser = Parser::new(tokens);
-        let parsed_expression = parser.expression().to_string();
+        let parsed_expression = parser.expression().unwrap().to_string();
         assert_eq!("(== (+ 1 2) (group (+ 5 7)))", parsed_expression);
     }
 }

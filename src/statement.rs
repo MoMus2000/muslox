@@ -12,6 +12,9 @@ pub enum Statement {
         indentifier: String,
         expression: Expr,
     },
+    Assert {
+        expression_a: Expr,
+    },
 }
 
 impl Statement {}

@@ -1,5 +1,9 @@
-1 + 2
+var a = 5;
+var b = 5;
+var c = a + b;
 
-2 + 4
+assert c == a +b;
 
-5 == 1 * 5
+print c;
+
+assert c == a*2 *b;
