@@ -95,7 +95,7 @@ impl Parser {
         let expr = self.equality()?;
         let variac = vec![TokenType::EQUAL];
         if self.match_token(&variac) {
-            let equals = self.previous();
+            let _ = self.previous();
             let value = self.assignment()?;
 
             match expr {
@@ -275,6 +275,7 @@ impl Parser {
             None => panic!("Undefined token"),
         }
     }
+    #[allow(dead_code)]
     fn synchronize(&mut self) {
         self.advance();
         while !self.is_at_end() {

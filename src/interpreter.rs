@@ -1,6 +1,4 @@
-use std::{collections::HashMap, fmt::format};
-
-use crate::{environment::Environment, expr::Expr, statement::Statement, LiteralValue, LoxErr};
+use crate::{environment::Environment, statement::Statement, LiteralValue, LoxErr};
 
 pub struct Interpreter {
     env: Environment,
@@ -24,7 +22,7 @@ impl Interpreter {
                     self.env.define(indentifier, result);
                 }
                 Statement::Expression { mut expression } => {
-                    let expr = expression.evaluate(&mut self.env)?;
+                    expression.evaluate(&mut self.env)?;
                 }
                 Statement::Print { mut expression } => {
                     let val = expression.evaluate(&mut self.env)?;

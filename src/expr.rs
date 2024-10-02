@@ -1,10 +1,4 @@
-use std::collections::HashMap;
-
-use crate::{
-    environment::{self, Environment},
-    scanner::*,
-    LoxErr,
-};
+use crate::{environment::Environment, scanner::*, LoxErr};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -159,7 +153,7 @@ impl Expr {
                     (LiteralValue::StringValue(x), LiteralValue::FValue(y), TokenType::STAR) => {
                         let mut concat = String::new();
 
-                        for i in 0..y as usize {
+                        for _ in 0..y as usize {
                             concat.push_str(&x);
                         }
 
@@ -277,7 +271,7 @@ mod tests {
                 literal: LiteralValue::FValue(2.0),
             }),
         };
-        let operation = Expr::Binary {
+        let _ = Expr::Binary {
             left: Box::new(minus_expr.clone()),
             op: super::Token {
                 token_type: super::TokenType::STAR,
