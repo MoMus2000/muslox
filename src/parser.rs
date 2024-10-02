@@ -60,16 +60,19 @@ impl Parser {
         self.consume(TokenType::LEFTPAREN, "Expected '(' after if")?;
         let expr = self.expression()?;
         self.consume(TokenType::RIGHTPAREN, "Expected ')' after if")?;
-        self.consume(TokenType::LEFTBRACE, "Expected {")?;
-        let mut statements = vec![];
-        while !self.check(&TokenType::RIGHTBRACE) && !self.is_at_end() {
-            let decl = self.declaration()?;
-            statements.push(decl);
+        let happy_path = self.statement()?;
+        if self.match_token(&vec![TokenType::ELSE]) {
+            let sad_path = self.statement()?;
+            return Ok(Statement::If {
+                conditional: expr,
+                happy_path: Box::new(happy_path),
+                sad_path: Some(Box::new(sad_path)),
+            });
         }
-        self.consume(TokenType::RIGHTBRACE, "Expected }")?;
         Ok(Statement::If {
             conditional: expr,
-            happy_path: statements,
+            happy_path: Box::new(happy_path),
+            sad_path: None,
         })
     }
 

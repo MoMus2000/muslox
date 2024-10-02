@@ -17,17 +17,19 @@ impl Interpreter {
                 Statement::If {
                     mut conditional,
                     happy_path,
+                    sad_path,
                 } => {
                     let res = conditional.evaluate(&mut self.env)?;
                     match res {
-                        LiteralValue::True => {
-                            self.interpret(happy_path)?;
-                        }
+                        LiteralValue::True => self.interpret(vec![*happy_path]),
                         LiteralValue::False => {
-                            println!("Conditional is false")
+                            if sad_path.is_some() {
+                                self.interpret(vec![*sad_path.unwrap()])?;
+                            }
+                            return Ok(());
                         }
                         _ => return Err("Error should not ever get to this point".into()),
-                    }
+                    }?;
                 }
                 Statement::Block { statements } => {
                     let mut new_env = Environment::new();

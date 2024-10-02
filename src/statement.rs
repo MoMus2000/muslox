@@ -20,7 +20,8 @@ pub enum Statement {
     },
     If {
         conditional: Expr,
-        happy_path: Vec<Statement>,
+        happy_path: Box<Statement>,
+        sad_path: Option<Box<Statement>>,
     },
 }
 
