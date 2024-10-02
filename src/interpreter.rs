@@ -1,15 +1,15 @@
 use std::{collections::HashMap, fmt::format};
 
-use crate::{expr::Expr, statement::Statement, LiteralValue, LoxErr};
+use crate::{environment::Environment, expr::Expr, statement::Statement, LiteralValue, LoxErr};
 
 pub struct Interpreter {
-    local_var: HashMap<String, LiteralValue>,
+    env: Environment,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Self {
-            local_var: HashMap::new(),
+            env: Environment::new(),
         }
     }
 
@@ -20,14 +20,14 @@ impl Interpreter {
                     indentifier,
                     mut expression,
                 } => {
-                    let result = expression.evaluate(&self.local_var)?;
-                    self.local_var.insert(indentifier, result);
+                    let result = expression.evaluate(&mut self.env)?;
+                    self.env.define(indentifier, result);
                 }
                 Statement::Expression { mut expression } => {
-                    let expr = expression.evaluate(&self.local_var)?;
+                    let expr = expression.evaluate(&mut self.env)?;
                 }
                 Statement::Print { mut expression } => {
-                    let val = expression.evaluate(&self.local_var)?;
+                    let val = expression.evaluate(&mut self.env)?;
                     let val = match val {
                         LiteralValue::FValue(x) => format!("{}", x),
                         LiteralValue::False => format!("false"),
@@ -39,7 +39,7 @@ impl Interpreter {
                     println!("{}", val);
                 }
                 Statement::Assert { mut expression_a } => {
-                    match expression_a.evaluate(&self.local_var) {
+                    match expression_a.evaluate(&mut self.env) {
                         Ok(res) => match res {
                             LiteralValue::True => {}
                             LiteralValue::False => {

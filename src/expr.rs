@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{scanner::*, LoxErr};
+use crate::{environment::Environment, scanner::*, LoxErr};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -19,8 +19,12 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>,
     },
-    Assignment {
+    Var {
         identifier: String,
+    },
+    Assignment {
+        name: String,
+        value: Box<Expr>,
     },
 }
 
@@ -35,20 +39,26 @@ impl Expr {
             Expr::Unary { operator, right } => {
                 return format!("({} {})", operator.lexeme, right.to_string())
             }
-            Expr::Assignment { identifier } => {
+            Expr::Var { identifier } => {
                 return format!("var {} ", identifier);
+            }
+            Expr::Assignment { name, value } => {
+                return format!("var {} = {}", name, value.to_string())
             }
         }
     }
 
-    pub fn evaluate(
-        &mut self,
-        local_storage: &HashMap<String, LiteralValue>,
-    ) -> Result<LiteralValue, LoxErr> {
+    pub fn evaluate(&mut self, local_storage: &mut Environment) -> Result<LiteralValue, LoxErr> {
         match self {
-            Expr::Assignment { identifier } => match local_storage.get(identifier) {
-                Some(ident) => Ok(ident.clone()),
-                None => {
+            Expr::Assignment { name, value } => {
+                local_storage.get(name.clone())?;
+                let value = value.evaluate(local_storage)?;
+                local_storage.define(name.to_string(), value.clone());
+                Ok(value)
+            }
+            Expr::Var { identifier } => match local_storage.get(identifier.to_string()) {
+                Ok(ident) => Ok(ident.clone()),
+                Err(_) => {
                     let error = format!("Undefined Var {}", identifier);
                     Err(error.into())
                 }
@@ -67,8 +77,8 @@ impl Expr {
                 }
             }
             Expr::Binary { left, op, right } => {
-                let left = left.evaluate(&local_storage)?;
-                let right = right.evaluate(&local_storage)?;
+                let left = left.evaluate(local_storage)?;
+                let right = right.evaluate(local_storage)?;
 
                 match (left, right, op.token_type.clone()) {
                     (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::PLUS) => {

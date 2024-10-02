@@ -88,7 +88,26 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expr, LoxErr> {
-        Ok(self.equality()?)
+        Ok(self.assignment()?)
+    }
+
+    fn assignment(&mut self) -> Result<Expr, LoxErr> {
+        let expr = self.equality()?;
+        let variac = vec![TokenType::EQUAL];
+        if self.match_token(&variac) {
+            let equals = self.previous();
+            let value = self.assignment()?;
+
+            match expr {
+                Expr::Var { identifier } => Ok(Expr::Assignment {
+                    name: identifier,
+                    value: Box::new(value),
+                }),
+                _ => Err("Invalid assignment target".into()),
+            }
+        } else {
+            Ok(expr)
+        }
     }
 
     fn equality(&mut self) -> Result<Expr, LoxErr> {
@@ -235,7 +254,7 @@ impl Parser {
         }
         if self.match_token(&vec![TokenType::IDENTIFIER]) {
             let identifier = self.tokens[self.current - 1].clone();
-            return Ok(Expr::Assignment {
+            return Ok(Expr::Var {
                 identifier: identifier.lexeme,
             });
         }
