@@ -3,9 +3,23 @@ var a = 1;
 if ( a == 1 ) {
     print "A is one"; 
     var b = 3;
+    
+    print "Hello World !";
+    print b;
+    
+    b = b + 1;
+    
+    print b;
+    
     if (b == 4 ) {
         print "B is 4";
     } else{
         print "six nine is 69 ";
     }
+
+    print "OK 123";
+
+    b = b + 1;
+
+    print b;
 }

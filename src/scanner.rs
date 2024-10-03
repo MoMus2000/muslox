@@ -1,3 +1,4 @@
+use core::panic;
 use std::{collections::HashMap, fmt::Display};
 
 use crate::LoxErr;
@@ -269,6 +270,13 @@ pub enum LiteralValue {
 }
 
 impl LiteralValue {
+    pub fn to_boolean(&self) -> bool {
+        match self {
+            LiteralValue::False => false,
+            LiteralValue::True => true,
+            _ => panic!("Invalid type cannot convert to bool"),
+        }
+    }
     pub fn to_string(&self) -> String {
         match self {
             LiteralValue::FValue(x) => x.to_string(),

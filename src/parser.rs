@@ -61,18 +61,16 @@ impl Parser {
         let expr = self.expression()?;
         self.consume(TokenType::RIGHTPAREN, "Expected ')' after if")?;
         let happy_path = self.statement()?;
-        if self.match_token(&vec![TokenType::ELSE]) {
-            let sad_path = self.statement()?;
-            return Ok(Statement::If {
-                conditional: expr,
-                happy_path: Box::new(happy_path),
-                sad_path: Some(Box::new(sad_path)),
-            });
-        }
+        let els = if self.match_token(&vec![TokenType::ELSE]) {
+            let stm = self.statement()?;
+            Some(Box::new(stm))
+        } else {
+            None
+        };
         Ok(Statement::If {
             conditional: expr,
             happy_path: Box::new(happy_path),
-            sad_path: None,
+            sad_path: els,
         })
     }
 
@@ -143,8 +141,36 @@ impl Parser {
         Ok(self.assignment()?)
     }
 
+    fn or(&mut self) -> Result<Expr, LoxErr> {
+        let mut expr = self.and()?;
+        while self.match_token(&vec![TokenType::OR]) {
+            let op = self.previous();
+            let right = self.and()?;
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                op,
+                right: Box::new(right),
+            };
+        }
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> Result<Expr, LoxErr> {
+        let mut expr = self.equality()?;
+        while self.match_token(&vec![TokenType::AND]) {
+            let op = self.previous();
+            let right = self.and()?;
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                op,
+                right: Box::new(right),
+            };
+        }
+        Ok(expr)
+    }
+
     fn assignment(&mut self) -> Result<Expr, LoxErr> {
-        let expr = self.equality()?;
+        let expr = self.or()?;
         let variac = vec![TokenType::EQUAL];
         if self.match_token(&variac) {
             let _ = self.previous();

@@ -24,11 +24,19 @@ pub enum Expr {
         name: String,
         value: Box<Expr>,
     },
+    Logical {
+        left: Box<Expr>,
+        op: Token,
+        right: Box<Expr>,
+    },
 }
 
 impl Expr {
     pub fn to_string(&self) -> String {
         match self {
+            Expr::Logical { left, op, right } => {
+                return format!("{} {} {}", op.lexeme, left.to_string(), right.to_string())
+            }
             Expr::Binary { left, op, right } => {
                 return format!("({} {} {})", op.lexeme, left.to_string(), right.to_string())
             }
@@ -48,6 +56,28 @@ impl Expr {
 
     pub fn evaluate(&mut self, local_storage: &mut Environment) -> Result<LiteralValue, LoxErr> {
         match self {
+            Expr::Logical { left, op, right } => {
+                let left = left.evaluate(local_storage)?;
+                let right = right.evaluate(local_storage)?;
+
+                match op.token_type {
+                    TokenType::AND => {
+                        let bool = left.to_boolean() && right.to_boolean();
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
+                    }
+                    TokenType::OR => {
+                        let bool = left.to_boolean() || right.to_boolean();
+                        match bool {
+                            true => Ok(LiteralValue::True),
+                            false => Ok(LiteralValue::False),
+                        }
+                    }
+                    _ => Err("Invalid token type for op".into()),
+                }
+            }
             Expr::Assignment { name, value } => {
                 let value = value.evaluate(local_storage)?;
                 let assign_success = local_storage.assign(name, value.clone());
