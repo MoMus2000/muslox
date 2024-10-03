@@ -14,6 +14,16 @@ impl Interpreter {
     pub fn interpret(&mut self, statements: Vec<Statement>) -> Result<(), LoxErr> {
         for stmt in statements {
             match stmt {
+                Statement::While {
+                    mut predicate,
+                    happy_path,
+                } => {
+                    let mut flag = predicate.evaluate(&mut self.env)?;
+                    while flag.to_boolean() == true {
+                        self.interpret(vec![*happy_path.clone()])?;
+                        flag = predicate.evaluate(&mut self.env)?;
+                    }
+                }
                 Statement::If {
                     mut conditional,
                     happy_path,

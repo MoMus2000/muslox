@@ -1,6 +1,6 @@
 use crate::expr::Expr;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     Expression {
         expression: Expr,
@@ -22,6 +22,10 @@ pub enum Statement {
         conditional: Expr,
         happy_path: Box<Statement>,
         sad_path: Option<Box<Statement>>,
+    },
+    While {
+        predicate: Expr,
+        happy_path: Box<Statement>,
     },
 }
 

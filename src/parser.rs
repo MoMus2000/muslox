@@ -53,7 +53,22 @@ impl Parser {
         if self.match_token(&variac) {
             return Ok(self.if_statement()?);
         }
+        let variac = vec![TokenType::WHILE];
+        if self.match_token(&variac) {
+            return Ok(self.while_statement()?);
+        }
         Ok(self.expression_statement()?)
+    }
+
+    fn while_statement(&mut self) -> Result<Statement, LoxErr> {
+        self.consume(TokenType::LEFTPAREN, "Expected '(' after if")?;
+        let expr = self.expression()?;
+        self.consume(TokenType::RIGHTPAREN, "Expected ')' after if")?;
+        let happy_path = self.statement()?;
+        Ok(Statement::While {
+            predicate: expr,
+            happy_path: Box::new(happy_path),
+        })
     }
 
     fn if_statement(&mut self) -> Result<Statement, LoxErr> {
