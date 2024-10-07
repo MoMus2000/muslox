@@ -1,11 +1,12 @@
-use std::collections::HashMap;
-
 use crate::{LiteralValue, LoxErr};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct Environment {
     values: HashMap<String, LiteralValue>,
-    pub enclosing: Option<Box<Environment>>,
+    pub enclosing: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
@@ -24,7 +25,7 @@ impl Environment {
         let fetched_val = self.values.get(&key);
         match (fetched_val, &self.enclosing) {
             (Some(v), _) => Ok(v.clone()),
-            (None, Some(v)) => Ok(v.get(key)?),
+            (None, Some(v)) => Ok((*v).borrow().get(key)?),
             (None, None) => Err("No value found".into()),
         }
     }
@@ -36,7 +37,7 @@ impl Environment {
                 self.values.insert(name.to_string(), value);
                 true
             }
-            (None, Some(env)) => env.assign(name, value),
+            (None, Some(env)) => (*env).borrow_mut().assign(name, value),
             (None, None) => false,
         }
     }

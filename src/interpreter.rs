@@ -1,13 +1,15 @@
 use crate::{environment::Environment, statement::Statement, LiteralValue, LoxErr};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct Interpreter {
-    env: Environment,
+    env: Rc<RefCell<Environment>>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Self {
-            env: Environment::new(),
+            env: Rc::new(RefCell::new(Environment::new())),
         }
     }
 
@@ -18,10 +20,10 @@ impl Interpreter {
                     mut predicate,
                     happy_path,
                 } => {
-                    let mut flag = predicate.evaluate(&mut self.env)?;
+                    let mut flag = predicate.evaluate(self.env.clone())?;
                     while flag.to_boolean() == true {
                         self.interpret(vec![*happy_path.clone()])?;
-                        flag = predicate.evaluate(&mut self.env)?;
+                        flag = predicate.evaluate(self.env.clone())?;
                     }
                 }
                 Statement::If {
@@ -29,7 +31,7 @@ impl Interpreter {
                     happy_path,
                     sad_path,
                 } => {
-                    let res = conditional.evaluate(&mut self.env)?;
+                    let res = conditional.evaluate(self.env.clone())?;
                     match res {
                         LiteralValue::True => self.interpret(vec![*happy_path]),
                         LiteralValue::False => {
@@ -43,9 +45,9 @@ impl Interpreter {
                 }
                 Statement::Block { statements } => {
                     let mut new_env = Environment::new();
-                    new_env.enclosing = Some(Box::new(self.env.clone()));
+                    new_env.enclosing = Some(self.env.clone());
                     let old_env = self.env.clone();
-                    self.env = new_env;
+                    self.env = Rc::new(RefCell::new(new_env));
                     let block_result = self.interpret(statements);
                     self.env = old_env;
                     block_result?
@@ -54,14 +56,14 @@ impl Interpreter {
                     indentifier,
                     mut expression,
                 } => {
-                    let result = expression.evaluate(&mut self.env)?;
-                    self.env.define(indentifier, result);
+                    let result = expression.evaluate(self.env.clone())?;
+                    (*self.env).borrow_mut().define(indentifier, result);
                 }
                 Statement::Expression { mut expression } => {
-                    expression.evaluate(&mut self.env)?;
+                    expression.evaluate(self.env.clone())?;
                 }
                 Statement::Print { mut expression } => {
-                    let val = expression.evaluate(&mut self.env)?;
+                    let val = expression.evaluate(self.env.clone())?;
                     let val = match val {
                         LiteralValue::FValue(x) => format!("{}", x),
                         LiteralValue::False => format!("false"),
@@ -73,7 +75,7 @@ impl Interpreter {
                     println!("{}", val);
                 }
                 Statement::Assert { mut expression_a } => {
-                    match expression_a.evaluate(&mut self.env) {
+                    match expression_a.evaluate(self.env.clone()) {
                         Ok(res) => match res {
                             LiteralValue::True => {}
                             LiteralValue::False => {

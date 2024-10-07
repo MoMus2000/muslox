@@ -1,4 +1,6 @@
 use crate::{environment::Environment, scanner::*, LoxErr};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -54,11 +56,14 @@ impl Expr {
         }
     }
 
-    pub fn evaluate(&mut self, local_storage: &mut Environment) -> Result<LiteralValue, LoxErr> {
+    pub fn evaluate(
+        &mut self,
+        environment: Rc<RefCell<Environment>>,
+    ) -> Result<LiteralValue, LoxErr> {
         match self {
             Expr::Logical { left, op, right } => {
-                let left = left.evaluate(local_storage)?;
-                let right = right.evaluate(local_storage)?;
+                let left = left.evaluate(environment.clone())?;
+                let right = right.evaluate(environment)?;
 
                 match op.token_type {
                     TokenType::AND => {
@@ -79,14 +84,14 @@ impl Expr {
                 }
             }
             Expr::Assignment { name, value } => {
-                let value = value.evaluate(local_storage)?;
-                let assign_success = local_storage.assign(name, value.clone());
+                let value = value.evaluate(environment.clone())?;
+                let assign_success = (*environment).borrow_mut().assign(name, value.clone());
                 match assign_success {
                     true => return Ok(value),
                     false => return Err(format!("Variable {} has not been declared", name).into()),
                 }
             }
-            Expr::Var { identifier } => match local_storage.get(identifier.to_string()) {
+            Expr::Var { identifier } => match (*environment).borrow().get(identifier.to_string()) {
                 Ok(ident) => Ok(ident.clone()),
                 Err(_) => {
                     let error = format!("Undefined Var {}", identifier);
@@ -94,9 +99,9 @@ impl Expr {
                 }
             },
             Expr::LiteralExpr { literal } => Ok(literal.clone()),
-            Expr::Grouping { expression } => expression.evaluate(local_storage),
+            Expr::Grouping { expression } => expression.evaluate(environment),
             Expr::Unary { operator, right } => {
-                let right = right.evaluate(local_storage)?;
+                let right = right.evaluate(environment)?;
                 match (right.clone(), operator.token_type.clone()) {
                     (LiteralValue::FValue(x), TokenType::MINUS) => {
                         return Ok(LiteralValue::FValue(-1.0 * x));
@@ -107,8 +112,8 @@ impl Expr {
                 }
             }
             Expr::Binary { left, op, right } => {
-                let left = left.evaluate(local_storage)?;
-                let right = right.evaluate(local_storage)?;
+                let left = left.evaluate(environment.clone())?;
+                let right = right.evaluate(environment)?;
 
                 match (left, right, op.token_type.clone()) {
                     (LiteralValue::FValue(x), LiteralValue::FValue(y), TokenType::PLUS) => {

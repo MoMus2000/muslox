@@ -61,9 +61,9 @@ impl Parser {
     }
 
     fn while_statement(&mut self) -> Result<Statement, LoxErr> {
-        self.consume(TokenType::LEFTPAREN, "Expected '(' after if")?;
+        self.consume(TokenType::LEFTPAREN, "Expected '(' after while")?;
         let expr = self.expression()?;
-        self.consume(TokenType::RIGHTPAREN, "Expected ')' after if")?;
+        self.consume(TokenType::RIGHTPAREN, "Expected ')' after condition")?;
         let happy_path = self.statement()?;
         Ok(Statement::While {
             predicate: expr,
