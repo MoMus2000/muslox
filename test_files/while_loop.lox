@@ -1,0 +1,18 @@
+var i = 0;
+
+print "The Var that I am printing is " + "i";
+print i;
+
+print "Inside the loop: ";
+while (i < 10) {
+    print i;
+    i = i +1;
+}
+print "Now back outside the loop";
+
+var a = 5;
+
+while (a != 0) {
+    print a;
+    a = a - 1;
+}

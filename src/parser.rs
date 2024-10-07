@@ -1,4 +1,5 @@
 use crate::expr::*;
+use crate::statement;
 use crate::statement::Statement;
 use crate::LiteralValue;
 use crate::LoxErr;
@@ -57,7 +58,90 @@ impl Parser {
         if self.match_token(&variac) {
             return Ok(self.while_statement()?);
         }
+        let variac = vec![TokenType::FOR];
+        if self.match_token(&variac) {
+            return Ok(self.for_loop()?);
+        }
         Ok(self.expression_statement()?)
+    }
+
+    fn for_loop(&mut self) -> Result<Statement, LoxErr> {
+        self.consume(TokenType::LEFTPAREN, "Expected '(' after for")?;
+        Ok(self.for_loop_init()?)
+    }
+
+    fn for_loop_init(&mut self) -> Result<Statement, LoxErr> {
+        let mut init;
+        let variac = vec![TokenType::SEMICOLON];
+        if self.match_token(&variac) {
+            init = None;
+        }
+        let variac = vec![TokenType::VAR];
+        if self.match_token(&variac) {
+            init = Some(self.declaration()?);
+        } else {
+            let expr = Some(self.expression_statement()?);
+            init = expr;
+        }
+
+        println!("VAR {:?}", init);
+
+        let condition;
+        if !self.check(&TokenType::SEMICOLON) {
+            condition = Some(self.expression()?);
+        } else {
+            condition = None
+        }
+
+        println!("Condition {:?}", condition);
+
+        self.consume(TokenType::SEMICOLON, "Expected ; after condition")?;
+
+        let increment;
+        if !self.check(&TokenType::RIGHTPAREN) {
+            increment = Some(self.expression()?);
+        } else {
+            increment = None
+        }
+        self.consume(TokenType::RIGHTPAREN, "Expected ) after condition")?;
+
+        println!("Increment {:?}", increment);
+
+        let mut body = self.statement()?;
+
+        if increment.is_some() {
+            body = Statement::Block {
+                statements: vec![
+                    *Box::new(body),
+                    Statement::Expression {
+                        expression: *Box::new(increment.unwrap()),
+                    },
+                ],
+            };
+        }
+
+        let cond;
+        match condition {
+            None => {
+                cond = Expr::LiteralExpr {
+                    literal: LiteralValue::True,
+                }
+            }
+            Some(c) => cond = c,
+        }
+
+        body = Statement::While {
+            predicate: cond,
+            happy_path: Box::new(body),
+        };
+
+        if init.is_some() {
+            body = Statement::Block {
+                statements: vec![*Box::new(init.unwrap()), *Box::new(body)],
+            };
+        }
+
+        Ok(body)
     }
 
     fn while_statement(&mut self) -> Result<Statement, LoxErr> {
